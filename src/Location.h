@@ -94,6 +94,7 @@ public:
 
     static inline uint32_t insertFile(const Path &path)
     {
+        error() << "insertFile" << path;
         bool save = false;
         (void)save;
         assert(path.isAbsolute());
@@ -272,6 +273,8 @@ public:
     {
         LOCK();
         uint32_t &refId = sPathsToIds[path];
+        error() << "balle" << sPathsToIds;
+        printf("SETTING %s to %u -> %u\n", path.c_str(), fileId, refId);
         assert(!refId || refId == fileId);
         refId = fileId;
         Path &p = sIdsToPaths[fileId];

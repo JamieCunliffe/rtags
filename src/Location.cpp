@@ -147,6 +147,7 @@ void Location::saveFileIds()
 
 bool Location::init(const Hash<Path, uint32_t> &pathsToIds)
 {
+    error() << "init called" << pathsToIds;
     LOCK();
     sPathsToIds = pathsToIds;
     sIdsToPaths.clear();
@@ -168,6 +169,7 @@ bool Location::init(const Hash<Path, uint32_t> &pathsToIds)
 
 void Location::init(const Hash<uint32_t, Path> &idsToPaths)
 {
+    error() << "init called 2" << idsToPaths;
     LOCK();
     sIdsToPaths = idsToPaths;
     sPathsToIds.clear();

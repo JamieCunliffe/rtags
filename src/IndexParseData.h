@@ -104,7 +104,10 @@ inline Deserializer &operator>>(Deserializer &s, IndexParseData &data)
     while (size-- > 0) {
         Path file;
         s >> file;
-        s >> data.compileCommands[Location::insertFile(file)];
+        uint32_t fileId;
+        s >> fileId;
+        Location::set(file, fileId);
+        s >> data.compileCommands[fileId];
     }
     s >> data.sources >> data.environment;
     Sandbox::decode(data.environment);
