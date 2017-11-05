@@ -71,6 +71,13 @@ struct Symbol
         size_t index;
     } argumentUsage; // set for references that are used as an argument only
 
+    struct FieldInfo {
+      int32_t Offset; // In bytes
+      int32_t Size;
+      String Name;
+    };
+    List<FieldInfo> members;
+
     uint16_t symbolLength;
     CXCursorKind kind;
     CXTypeKind type;
@@ -122,6 +129,7 @@ struct Symbol
         briefComment.clear();
         xmlComment.clear();
         startLine = startColumn = endLine = endColumn = size = fieldOffset = alignment = -1;
+        members.clear();
     }
 
     uint16_t targetsValue() const;
@@ -178,6 +186,7 @@ struct Symbol
     static String kindSpelling(uint16_t kind);
 
     bool operator<(const Symbol &other) const { return location < other.location; }
+    void printMembers( String &buffer ) const;
 };
 
 RCT_FLAGS(Symbol::ToStringFlag);
@@ -214,14 +223,35 @@ template <> inline Deserializer &operator>>(Deserializer &s, Symbol::ArgumentUsa
     return s;
 }
 
+
+
+template <> inline Serializer &operator<<(Serializer &s, const Symbol::FieldInfo &arg)
+{
+    s << arg.Offset << arg.Size << arg.Name;
+    return s;
+}
+
+template <> inline Deserializer &operator>>(Deserializer &s, Symbol::FieldInfo &arg)
+{
+    s >> arg.Offset >> arg.Size >> arg.Name;
+    return s;
+}
+
+
+
 template <> inline Serializer &operator<<(Serializer &s, const Symbol &t)
 {
+    auto membersSize = t.members.size();
     s << t.location << t.argumentUsage << t.symbolName << t.usr
       << t.typeName << t.baseClasses << t.arguments << t.symbolLength
       << static_cast<uint16_t>(t.kind) << static_cast<uint16_t>(t.type)
       << static_cast<uint8_t>(t.linkage) << t.flags << t.briefComment << t.xmlComment
       << t.enumValue << t.startLine << t.endLine << t.startColumn << t.endColumn
-      << t.size << t.fieldOffset << t.alignment;
+      << t.size << t.fieldOffset << t.alignment << membersSize;
+
+    if( membersSize > 0 ) {
+        s << t.members;
+    }
     return s;
 }
 
@@ -229,12 +259,17 @@ template <> inline Deserializer &operator>>(Deserializer &s, Symbol &t)
 {
     uint16_t kind, type;
     uint8_t linkage;
+    decltype( t.members.size() )  membersSize;
     s >> t.location >> t.argumentUsage >> t.symbolName
       >> t.usr >> t.typeName >> t.baseClasses >> t.arguments
       >> t.symbolLength >> kind >> type >> linkage >> t.flags
       >> t.briefComment >> t.xmlComment >> t.enumValue
       >> t.startLine >> t.endLine >> t.startColumn >> t.endColumn
-      >> t.size >> t.fieldOffset >> t.alignment;
+      >> t.size >> t.fieldOffset >> t.alignment >> membersSize;
+
+    if( membersSize > 0 ) {
+        s >> t.members;
+    }
 
     t.kind = static_cast<CXCursorKind>(kind);
     t.type = static_cast<CXTypeKind>(type);

@@ -153,6 +153,10 @@ String Symbol::toString(const std::shared_ptr<Project> &project,
                    String::format<32>("%d/%d", fieldOffset, fieldOffset / 8));
     if (alignment >= 0)
         writePiece("Alignment", "alignment", std::to_string(alignment));
+
+    if( members.size() > 0 ) {
+        printMembers( ret );
+    }
     if (!args.isEmpty())
         writePiece("Arguments", "arguments", String::join(args, ", "));
     if (!bases.isEmpty())
@@ -451,4 +455,28 @@ Value Symbol::toValue(const std::shared_ptr<Project> &project,
         return ret;
     };
     return toValue(*this, toStringFlags);
+}
+
+void Symbol::printMembers( String &buffer ) const {
+  buffer << "+ -------------\n";
+  for( size_t index = 0; index < members.size(); ++index ) {
+    auto i = members[index];
+    if( index > 0 ) {
+      auto prev = members[index-1];
+      long long expectedOffset = prev.Offset + prev.Size;
+      if( expectedOffset != i.Offset ) {
+        long long paddingSize = i.Offset - expectedOffset;
+        buffer << "| " << ( expectedOffset ) << "\t| <Alignment Member> (size = " << paddingSize << ")\n";
+      }
+    }
+
+    buffer << "| " << i.Offset << "\t| " << i.Name << " (size = " << i.Size << ")\n";
+  }
+
+  auto last = --members.end();
+  if( last->Offset + last->Size != size ) {
+      long long paddingSize = size - (last->Offset + last->Size);
+    buffer << "| " << ( last->Offset + last->Size ) << "\t| <Alignment Member> (size = " << paddingSize << ")\n";
+  }
+  buffer << "+ -------------\n";
 }

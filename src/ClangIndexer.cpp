@@ -1131,7 +1131,7 @@ bool ClangIndexer::handleReference(const CXCursor &cursor, CXCursorKind kind, Lo
         }
     }
 
-#if CINDEX_VERSION >= CINDEX_VERSION_ENCODE(0, 35)
+
     if (result == Found) {
         c->size = reffedCursor.size;
         c->alignment = reffedCursor.alignment;
@@ -1139,13 +1139,14 @@ bool ClangIndexer::handleReference(const CXCursor &cursor, CXCursorKind kind, Lo
         const CXType type = clang_getCursorType(ref);
         if (type.kind != CXType_LValueReference
             && type.kind != CXType_RValueReference
+#if CINDEX_VERSION >= CINDEX_VERSION_ENCODE(0, 35)            
             && type.kind != CXType_Auto
+#endif
             && type.kind != CXType_Unexposed) {
             c->size = std::max<uint16_t>(0, clang_Type_getSizeOf(type));
             c->alignment = std::max<int16_t>(-1, clang_Type_getAlignOf(type));
         }
     }
-#endif
 
     CXSourceRange range = clang_getCursorExtent(cursor);
     uint16_t symLength;
@@ -1721,11 +1722,13 @@ CXChildVisitResult ClangIndexer::handleCursor(const CXCursor &cursor, CXCursorKi
         break;
     }
 
-#if CINDEX_VERSION >= CINDEX_VERSION_ENCODE(0, 35)
+
     if (!(c.flags & (Symbol::Auto|Symbol::AutoRef))
         && c.type != CXType_LValueReference
         && c.type != CXType_RValueReference
+#if CINDEX_VERSION >= CINDEX_VERSION_ENCODE(0, 35)
         && c.type != CXType_Auto
+#endif
         && c.type != CXType_Unexposed) {
         c.size = std::max<uint16_t>(0, clang_Type_getSizeOf(type));
         c.alignment = std::max<int16_t>(-1, clang_Type_getAlignOf(type));
@@ -1742,7 +1745,6 @@ CXChildVisitResult ClangIndexer::handleCursor(const CXCursor &cursor, CXCursorKi
             }
         }
     }
-#endif
 
     c.kind = kind;
     c.linkage = clang_getCursorLinkage(cursor);
@@ -1840,6 +1842,7 @@ CXChildVisitResult ClangIndexer::handleCursor(const CXCursor &cursor, CXCursorKi
     case CXCursor_ClassTemplate:
     case CXCursor_StructDecl:
     case CXCursor_ClassDecl: {
+        populateMembers( c, cursor );
         const CXCursor specialization = clang_getSpecializedCursorTemplate(cursor);
         if (RTags::isValid(specialization)) {
             unit(location)->targets[location][::usr(specialization)] = 0;
@@ -2422,6 +2425,29 @@ CXCursor ClangIndexer::resolveTemplate(CXCursor cursor, Location location, bool 
         }
     }
     return cursor;
+}
+
+CXChildVisitResult populateMembersVisitor( CXCursor c, CXCursor parent, CXClientData data )
+{
+    if( clang_getCursorKind( c ) == CXCursorKind::CXCursor_FieldDecl ) {
+        auto fields = (std::vector<Symbol::FieldInfo>*)data;
+        Symbol::FieldInfo info;
+        info.Size = clang_Type_getSizeOf( clang_getCursorType( c ) );
+        info.Name = RTags::eatString( clang_getCursorSpelling( c ) );
+#if CINDEX_VERSION >= CINDEX_VERSION_ENCODE( 0, 30 )
+        (void)parent; // Unused.
+        info.Offset = clang_Cursor_getOffsetOfField(c) / 8;
+#else
+        info.Offset = clang_Type_getOffsetOf( clang_getCursorType( parent ), info.Name.data() ) / 8;
+#endif
+        fields->push_back( info );
+    }
+    return CXChildVisit_Continue;
+}
+
+void ClangIndexer::populateMembers(Symbol &symbol, CXCursor cursor )
+{
+    clang_visitChildren( cursor, populateMembersVisitor, &symbol.members );
 }
 
 CXCursor ClangIndexer::resolveTypedef(CXCursor cursor)

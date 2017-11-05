@@ -1483,7 +1483,7 @@ Uses `completing-read' to ask for the project."
         (when save-to-kill-ring
           (copy-region-as-kill (point-min) (point-max)))
         (when (called-interactively-p 'any)
-          (message "%s" (buffer-string)))
+          (with-output-to-temp-buffer "*RTags Symbol Info*" (princ (buffer-string))))
         (buffer-string)))))
 
 ;;;###autoload

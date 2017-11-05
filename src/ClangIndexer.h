@@ -50,6 +50,7 @@ private:
     void extractArguments(List<Symbol::Argument> *arguments, const CXCursor &cursor);
     CXCursor resolveTemplate(CXCursor cursor, Location location = Location(), bool *specialized = 0);
     static CXCursor resolveTypedef(CXCursor cursor);
+    void populateMembers(Symbol &symbol, CXCursor cursor);
 
     // DiagnosticsProvider
     using RTags::DiagnosticsProvider::createLocation;
